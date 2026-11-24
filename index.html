@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Parcours-Zähler</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="theme-color" content="#2c5e4f">
+<meta name="apple-mobile-web-app-title" content="Parcours">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<style>
+:root{--bg:#e8ece3;--card:#f6f8f2;--ink:#1c2a24;--mute:#5d6d63;--acc:#2c5e4f;--acc-ink:#f6f8f2;--line:#c9d1c3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17201c;--card:#212c27;--ink:#e6ebe2;--mute:#9aa99f;--acc:#7fb8a3;--acc-ink:#12201a;--line:#35443d;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#17201c;--card:#212c27;--ink:#e6ebe2;--mute:#9aa99f;--acc:#7fb8a3;--acc-ink:#12201a;--line:#35443d;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:17px/1.4 -apple-system,"Helvetica Neue",Arial,sans-serif;-webkit-tap-highlight-color:transparent}
+main{max-width:520px;margin:0 auto;padding:16px}
+h1{font:700 26px/1.15 Georgia,"Times New Roman",serif;margin:8px 0 4px}
+h2{font:700 20px/1.2 Georgia,serif;margin:20px 0 8px}
+.mute{color:var(--mute);font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
+label{display:block;font-size:14px;color:var(--mute);margin:12px 0 4px}
+select,input,textarea{width:100%;font:inherit;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:12px 14px;min-height:48px}
+button.pri{background:var(--acc);color:var(--acc-ink);border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.4}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.top{display:flex;justify-content:space-between;align-items:baseline}
+.tot{font:700 34px/1 Georgia,serif}
+.bar{height:6px;border-radius:3px;background:var(--line);margin:8px 0 14px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--acc)}
+.zones{display:grid;gap:10px;margin:12px 0}
+.zones button{min-height:76px;display:flex;justify-content:space-between;align-items:center;font-size:19px}
+.zones b{font:700 30px Georgia,serif}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}
+.chip{padding:4px 10px;border-radius:99px;background:var(--bg);border:1px solid var(--line);font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}
+td:last-child,th:last-child{text-align:right}
+.grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.grid button{min-height:44px;padding:6px;font-size:14px}.grid .on{border-color:var(--acc);border-width:2px}.grid .dn{background:var(--bg)}
+.pl{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;margin:6px 0;min-height:52px}
+.pl.on{border:2px solid var(--acc)}.pl.ok .nm::after{content:" ✓";color:var(--acc)}
+.pl b{font:700 20px Georgia,serif}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.dlg{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:16px;padding:20px;max-width:380px;width:100%}
+.dlg h2{margin:0 0 8px}
+.dng{background:#8a3b2a;color:#fff;border-color:#8a3b2a;font-weight:600}
+.lk{display:inline-block;padding:10px 14px;border:1px solid var(--line);border-radius:12px;color:var(--ink);text-decoration:none;background:var(--card);margin:2px 4px 2px 0;min-height:44px;line-height:1.6}
+.lk:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
+.wrap{overflow-x:auto}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const CLS_DBSV=['Recurve (Rc)','Compound (Cu)','Compound Blank (Cb)','Blankbogen (Bb)','Jagdbogen (Jb)','Langbogen (Lb)','Primitivbogen (Pb)'];
+const DF=['Longbow (LB)','Freestyle Unlimited (FU)','Freestyle Limited Recurve (FS-R)','Freestyle Limited Compound (FS-C)','Barebow Recurve (BB-R)','Barebow Compound (BB-C)','Bowhunter Recurve (BH-R)','Bowhunter Compound (BH-C)','Bowhunter Unlimited (BU)','Bowhunter Limited (BL)','Primitivbogen (PB)','Traditioneller Recurve (TRB)'];
+const IF=['Barebow (BB)','Freestyle Limited (FS)','Freestyle Unlimited (FU)','Bowhunter (BH)','Bowhunter Limited (BL)','Bowhunter Unlimited (BU)','Longbow (LB)','Historical Bow (HB)','Traditional Recurve (TR)'];
+const RULES={
+if3:{name:'IFAA Animal Round unmarked (3 Pfeile)',sub:'Bis zu 3 Pfeile, der erste Treffer beendet das Ziel. Kill und Wound.',arrows:3,stop:true,zones:[{k:'k',l:'Kill',p:[20,16,12]},{k:'w',l:'Wound',p:[18,14,10]}],cls:IF},
+if1:{name:'IFAA 3D Hunting Round (1 Pfeil)',sub:'1 Pfeil pro Ziel. Kill 20, Vital 16, Wound 10.',arrows:1,stop:true,zones:[{k:'k',l:'Kill',p:[20]},{k:'v',l:'Vital',p:[16]},{k:'w',l:'Wound',p:[10]}],cls:IF},
+if2:{name:'IFAA 3D Standard Round (2 Pfeile)',sub:'2 Pfeile pro Ziel, beide zählen. Kill 10, Vital 8, Wound 5.',arrows:2,stop:false,zones:[{k:'k',l:'Kill',p:[10,10]},{k:'v',l:'Vital',p:[8,8]},{k:'w',l:'Wound',p:[5,5]}],cls:IF},
+df3:{name:'DFBV 3D Drei-Pfeil-Runde',sub:'Bis zu 3 Pfeile, der erste Treffer beendet das Ziel. Kill, Vital, Wound.',arrows:3,stop:true,zones:[{k:'k',l:'Kill (zentral)',p:[20,14,8]},{k:'v',l:'Vital (innen)',p:[18,12,6]},{k:'w',l:'Wound (außen)',p:[16,10,4]}],cls:DF},
+df1:{name:'DFBV 3D Hunter (1 Pfeil)',sub:'1 Pfeil pro Ziel. Kill 20, Vital 16, Wound 10.',arrows:1,stop:true,zones:[{k:'k',l:'Kill (zentral)',p:[20]},{k:'v',l:'Vital (innen)',p:[16]},{k:'w',l:'Wound (außen)',p:[10]}],cls:DF},
+df2:{name:'DFBV 3D Doppelhunter (2 Pfeile)',sub:'2 Pfeile pro Ziel, beide zählen. Kill 10, Vital 8, Wound 5.',arrows:2,stop:false,zones:[{k:'k',l:'Kill (zentral)',p:[10,10]},{k:'v',l:'Vital (innen)',p:[8,8]},{k:'w',l:'Wound (außen)',p:[5,5]}],cls:DF},
+wa:{name:'WA / DSB 3D',sub:'2 Pfeile pro Ziel, beide zählen. Zonen 11, 10, 8, 5.',arrows:2,stop:false,zones:[{k:'11',l:'Innerer Kill',p:[11,11]},{k:'10',l:'Kill',p:[10,10]},{k:'8',l:'Leben',p:[8,8]},{k:'5',l:'Körper',p:[5,5]}],cls:['Recurve','Compound','Blankbogen','Traditional','Langbogen']},
+wald:{name:'DBSV 3D-Waldrunde',sub:'Bis zu 3 Pfeile, der erste Treffer beendet das Ziel.',arrows:3,stop:true,zones:[{k:'ik',l:'Innere Killzone',p:[15,10,5]},{k:'ok',l:'Äußere Killzone',p:[15,10,5]},{k:'b',l:'Körper',p:[12,7,2]}],cls:CLS_DBSV},
+jagd:{name:'DBSV 3D-Jagdrunde',sub:'1 Pfeil pro Ziel.',arrows:1,stop:true,zones:[{k:'ik',l:'Innere Killzone',p:[15]},{k:'ok',l:'Äußere Killzone',p:[12]},{k:'b',l:'Körper',p:[7]}],cls:CLS_DBSV}
+};
+const $=document.getElementById('app');
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let S={v:'home',rid:'wa',cls:'',name:'',n:20,np:1,pn:[],cur:0,p:0,t:[],hist:[],saved:false};
+try{S.hist=JSON.parse(localStorage.getItem('pz_hist')||'[]')}catch(e){}
+try{S.pn=JSON.parse(localStorage.getItem('pz_names')||'[]')}catch(e){}
+if(!Array.isArray(S.pn))S.pn=[];
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+const R=()=>RULES[S.rid];
+const pname=i=>S.pn[i]||('Schütze '+(i+1));
+const tScore=(r,t)=>t.reduce((s,z,i)=>s+(z==='M'?0:r.zones.find(x=>x.k===z).p[i]),0);
+const isDone=(r,t)=>t.length>=r.arrows||(r.stop&&t.length>0&&t[t.length-1]!=='M');
+const maxT=r=>r.stop?Math.max(...r.zones.map(z=>z.p[0])):r.zones[0].p.reduce((a,b)=>a+b,0);
+const total=pi=>S.t.reduce((s,t)=>s+tScore(R(),t[pi]),0);
+const allDone=ti=>S.t[ti].every(a=>isDone(R(),a));
+const players=h=>h.players||[{name:'Ich',tot:h.tot,c:h.c,m:h.m}];
+function start(){S.cur=0;S.p=0;S.t=Array.from({length:S.n},()=>Array.from({length:S.np},()=>[]));S.saved=false;S.v='shoot';draw()}
+function nextOpen(){for(let i=1;i<S.np;i++){const j=(S.p+i)%S.np;if(!isDone(R(),S.t[S.cur][j]))return j}return -1}
+function shoot(k){const a=S.t[S.cur][S.p];if(isDone(R(),a))return;a.push(k);if(isDone(R(),a)){const j=nextOpen();if(j>=0)S.p=j}draw()}
+function lastWithArrows(ti){for(let i=S.np-1;i>=0;i--)if(S.t[ti][i].length)return i;return -1}
+function undo(){let j=lastWithArrows(S.cur);if(j<0&&S.cur>0){S.cur--;j=lastWithArrows(S.cur)}if(j>=0){S.p=j;S.t[S.cur][j].pop()}draw()}
+function go(d){S.cur=Math.max(0,Math.min(S.n-1,S.cur+d));const j=S.t[S.cur].findIndex(a=>!isDone(R(),a));S.p=j>=0?j:0;draw()}
+function counts(r,ts,pi){const c={};r.zones.forEach(z=>c[z.k]=0);let m=0;ts.forEach(t=>t[pi].forEach(z=>{if(z==='M')m++;else c[z]++}));return{c,m}}
+function snap(){const nm=document.getElementById('nm'),n=document.getElementById('n');if(nm)S.name=nm.value.trim();if(n)S.n=Math.max(1,Math.min(60,+n.value||20));readNames()}
+function readNames(){for(let i=0;i<S.np;i++){const e=document.getElementById('pn'+i);if(e)S.pn[i]=e.value.trim()}}
+function namesHtml(){let h='';for(let i=0;i<S.np;i++)h+=`<label for="pn${i}">Name Schütze ${i+1}</label><input id="pn${i}" value="${esc(S.pn[i]||'')}" placeholder="Schütze ${i+1}" maxlength="20">`;return h}
+function home(){
+ $.innerHTML=`<h1>Parcours-Zähler</h1><p class="mute">3D-Bogenschießen: Punkte erfassen und auswerten.</p>
+ <button class="pri" style="width:100%;min-height:72px;font-size:20px;margin-top:16px" id="nr">Neue Runde starten</button>
+ <button style="width:100%;margin-top:10px" id="hi">Verlauf und Statistik</button>
+ <button style="width:100%;margin-top:10px" id="pf">Parcours-Finder</button>
+ <button style="width:100%;margin-top:10px" id="bs">Bogen Set-Up</button>
+ <button style="width:100%;margin-top:10px" id="st">Einstellungen</button>`;
+ document.getElementById('nr').onclick=()=>{applyPref();S.v='setup';draw()};
+ document.getElementById('hi').onclick=()=>{S.v='hist';draw()};
+ document.getElementById('pf').onclick=()=>{S.v='finder';draw()};
+ document.getElementById('bs').onclick=()=>{S.v='bow';draw()};
+ document.getElementById('st').onclick=()=>{S.v='prefs';draw()};
+}
+function setup(){
+ const r=R();
+ $.innerHTML=`<button id="hm">Zurück</button><h1>Neue Runde</h1><p class="mute">Wähle Regelwerk, Bogenklasse, Schützen und Anzahl der Ziele.</p>
+ <div class="card"><label for="rid">Regelwerk</label>
+ <select id="rid">${Object.entries(RULES).map(([k,v])=>`<option value="${k}" ${k===S.rid?'selected':''}>${v.name}</option>`).join('')}</select>
+ <p class="mute" style="margin:6px 0 0">${r.sub}</p>
+ <label for="cls">Bogenklasse</label>
+ <select id="cls">${r.cls.map(c=>`<option ${c===S.cls?'selected':''}>${c}</option>`).join('')}</select>
+ <label for="nm">Name des Parcours</label><input id="nm" value="${esc(S.name)}" placeholder="z. B. Biberach Wald">
+ <label for="n">Anzahl Ziele</label><input id="n" type="number" inputmode="numeric" min="1" max="60" value="${S.n}">
+ <label for="np">Anzahl Schützen</label><input id="np" type="number" inputmode="numeric" min="1" max="6" value="${S.np}">
+ <div id="pnames">${namesHtml()}</div></div>
+ <button class="pri" style="width:100%" id="go">Runde starten</button>`;
+ document.getElementById('rid').onchange=e=>{snap();S.rid=e.target.value;S.cls=(PREF.rid===S.rid&&RULES[S.rid].cls.includes(PREF.cls))?PREF.cls:'';setup()};
+ document.getElementById('np').oninput=e=>{const v=parseInt(e.target.value);if(!v)return;readNames();S.np=Math.max(1,Math.min(6,v));document.getElementById('pnames').innerHTML=namesHtml()};
+ document.getElementById('go').onclick=()=>{S.cls=document.getElementById('cls').value;snap();S.pn=S.pn.slice(0,6);save('pz_names',S.pn);start()};
+ document.getElementById('hm').onclick=()=>{S.v='home';draw()};
+}
+function shootView(){
+ const r=R(),t=S.t[S.cur][S.p],done=isDone(r,t),ai=t.length,all=allDone(S.cur);
+ const finished=S.t.filter((x,i)=>allDone(i)).length;
+ $.innerHTML=`<div class="mute">${esc(S.name||r.name)} · ${esc(S.cls)}</div><h1>Ziel ${S.cur+1} von ${S.n}</h1>
+ <div class="bar"><i style="width:${finished/S.n*100}%"></i></div>
+ ${S.t[S.cur].map((a,i)=>`<button class="pl ${i===S.p?'on':''} ${isDone(r,a)?'ok':''}" data-p="${i}"><span><span class="nm">${esc(pname(i))}</span><br><span class="mute">Ziel: ${isDone(r,a)?tScore(r,a):'offen'}</span></span><b>${total(i)}</b></button>`).join('')}
+ <div class="chips">${t.map((z,i)=>`<span class="chip">Pfeil ${i+1}: ${z==='M'?'Fehlschuss':r.zones.find(x=>x.k===z).l+' ('+(r.zones.find(x=>x.k===z).p[i])+')'}</span>`).join('')||`<span class="mute">${esc(pname(S.p))}: noch kein Pfeil</span>`}</div>
+ ${done?`<div class="card"><b>${esc(pname(S.p))}: ${tScore(r,t)} Punkte auf diesem Ziel</b></div>`:`<div class="mute">${esc(pname(S.p))} · ${r.arrows>1?`Pfeil ${ai+1} von ${r.arrows}`:'Dein Pfeil'}</div>
+ <div class="zones">${r.zones.map(z=>`<button data-k="${z.k}"><span>${z.l}</span><b>${z.p[ai]}</b></button>`).join('')}<button data-k="M" style="min-height:56px"><span>Fehlschuss</span><b>0</b></button></div>`}
+ <div class="row"><button id="u">Zurück</button>${S.cur<S.n-1?`<button class="pri" id="nx" ${all?'':'disabled'}>Nächstes Ziel</button>`:`<button class="pri" id="fin" ${all?'':'disabled'}>Auswerten</button>`}</div>
+ <details style="margin-top:16px"><summary class="mute">Alle Ziele (${esc(pname(S.p))})</summary><div class="grid" style="margin-top:8px">${S.t.map((x,i)=>`<button data-j="${i}" class="${i===S.cur?'on':''} ${allDone(i)?'':'dn'}">${i+1}<br><b>${isDone(r,x[S.p])?tScore(r,x[S.p]):'-'}</b></button>`).join('')}</div></details>
+ <button style="width:100%;margin-top:14px" id="ab">Runde abbrechen</button>`;
+ $.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>shoot(b.dataset.k));
+ $.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{S.p=+b.dataset.p;draw()});
+ $.querySelectorAll('[data-j]').forEach(b=>b.onclick=()=>{S.cur=+b.dataset.j;draw()});
+ document.getElementById('u').onclick=undo;
+ const nx=document.getElementById('nx');if(nx)nx.onclick=()=>go(1);
+ const fin=document.getElementById('fin');if(fin)fin.onclick=()=>{S.v='sum';draw()};
+ document.getElementById('ab').onclick=askAbort;
+}
+function sumView(){
+ const r=R(),mx=S.n*maxT(r);
+ const rows=Array.from({length:S.np},(_,i)=>{const {c,m}=counts(r,S.t,i);return{i,name:pname(i),tot:total(i),c,m}}).sort((a,b)=>b.tot-a.tot);
+ $.innerHTML=`<h1>Ergebnis</h1><p class="mute">${esc(S.name||r.name)} · ${esc(S.cls)} · ${r.name}</p>
+ ${rows.map((p,k)=>`<div class="card"><div class="top"><b>${S.np>1?(k+1)+'. ':''}${esc(p.name)}</b><span class="tot" style="font-size:28px">${p.tot}</span></div>
+ <p class="mute" style="margin:4px 0">von ${mx} möglichen · Ø ${(p.tot/S.n).toFixed(1)} pro Ziel · ${Math.round(p.tot/mx*100)} %</p>
+ <table>${r.zones.map(z=>`<tr><td>${z.l}</td><td>${p.c[z.k]}×</td></tr>`).join('')}<tr><td>Fehlschüsse</td><td>${p.m}×</td></tr></table></div>`).join('')}
+ <div class="card"><b>Pro Ziel</b><div class="wrap"><table><tr><th>Ziel</th>${Array.from({length:S.np},(_,i)=>`<th>${esc(pname(i))}</th>`).join('')}</tr>${S.t.map((t,i)=>`<tr><td>${i+1}</td>${t.map(a=>`<td>${tScore(r,a)}</td>`).join('')}</tr>`).join('')}</table></div></div>
+ <button class="pri" style="width:100%" id="sv" ${S.saved?'disabled':''}>${S.saved?'Gespeichert':'Runde speichern'}</button>
+ <button style="width:100%;margin-top:10px" id="bk">Zurück zur Runde</button>
+ <button style="width:100%;margin-top:10px" id="ns">Zum Home-Menü</button>`;
+ document.getElementById('sv').onclick=()=>{S.hist.unshift({d:new Date().toISOString(),rid:S.rid,cls:S.cls,name:S.name,n:S.n,mx,t:JSON.parse(JSON.stringify(S.t)),players:Array.from({length:S.np},(_,i)=>{const {c,m}=counts(r,S.t,i);return{name:pname(i),tot:total(i),c,m}})});save('pz_hist',S.hist);S.saved=true;draw()};
+ document.getElementById('bk').onclick=()=>{S.v='shoot';draw()};
+ document.getElementById('ns').onclick=()=>{S.v='home';draw()};
+}
+function histView(){
+ const by={};S.hist.forEach(h=>{const k=h.rid+'|'+h.cls;(by[k]=by[k]||[]).push(h)});
+ $.innerHTML=`<h1>Verlauf und Statistik</h1>
+ ${!S.hist.length?'<p class="mute">Noch keine gespeicherten Runden. Beende eine Runde und tippe auf „Runde speichern“.</p>':''}
+ ${Object.entries(by).map(([k,a])=>{const [rid,cls]=k.split('|');const res=a.flatMap(h=>players(h).map(p=>({avg:p.tot/h.n,tot:p.tot})));const avg=res.reduce((s,x)=>s+x.avg,0)/res.length;const best=Math.max(...res.map(x=>x.tot));
+ return `<div class="card"><b>${RULES[rid]?RULES[rid].name:rid} · ${esc(cls)}</b><p class="mute" style="margin:4px 0">${a.length} Runden · Ø ${avg.toFixed(1)} pro Ziel · Bestwert ${best}</p></div>`}).join('')}
+ ${S.hist.length?`<h2>Alle Runden</h2>${S.hist.map((h,i)=>`<button class="pl" data-i="${i}" style="display:block"><b>${esc(h.name||(RULES[h.rid]?RULES[h.rid].name:''))}</b><br><span class="mute">${new Date(h.d).toLocaleDateString('de-DE')} · ${RULES[h.rid]?RULES[h.rid].name:h.rid} · ${esc(h.cls)}</span><br><span class="mute">${players(h).map(p=>esc(p.name)+' '+p.tot).join(' · ')}</span></button>`).join('')}`:''}
+ <button style="width:100%;margin-top:14px" id="bk">Zurück</button>`;
+ $.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{S.di=+b.dataset.i;S.v='detail';draw()});
+ document.getElementById('bk').onclick=()=>{S.v='home';draw()};
+}
+function detailView(){
+ const h=S.hist[S.di];if(!h){S.v='hist';draw();return}
+ const r=RULES[h.rid]||{zones:[],name:h.rid},ps=players(h).map((p,i)=>({...p,i})).sort((a,b)=>b.tot-a.tot);
+ const d=new Date(h.d);
+ $.innerHTML=`<button id="bk">Zurück</button><h1>${esc(h.name||r.name)}</h1>
+ <p class="mute">${d.toLocaleDateString('de-DE')}, ${d.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})} Uhr<br>${r.name} · ${esc(h.cls)} · ${h.n} Ziele · ${ps.length} ${ps.length>1?'Schützen':'Schütze'}</p>
+ ${ps.map((p,k)=>`<div class="card"><div class="top"><b>${ps.length>1?(k+1)+'. ':''}${esc(p.name)}</b><span class="tot" style="font-size:28px">${p.tot}</span></div>
+ <p class="mute" style="margin:4px 0">von ${h.mx} möglichen · Ø ${(p.tot/h.n).toFixed(1)} pro Ziel · ${Math.round(p.tot/h.mx*100)} %</p>
+ ${p.c?`<table>${r.zones.map(z=>`<tr><td>${z.l}</td><td>${p.c[z.k]||0}×</td></tr>`).join('')}<tr><td>Fehlschüsse</td><td>${p.m||0}×</td></tr></table>`:''}</div>`).join('')}
+ ${h.t?`<div class="card"><b>Pro Ziel</b><div class="wrap"><table><tr><th>Ziel</th>${h.t[0].map((_,i)=>`<th>${esc(players(h)[i].name)}</th>`).join('')}</tr>${h.t.map((row,ti)=>`<tr><td>${ti+1}</td>${row.map(a=>`<td>${tScore(r,a)}<br><span class="mute" style="font-size:12px">${a.map(z=>z==='M'?'Fehl':(r.zones.find(x=>x.k===z)||{l:z}).l).join(' / ')||'-'}</span></td>`).join('')}</tr>`).join('')}</table></div></div>`:'<p class="mute">Für diese ältere Runde wurden keine Einzelwerte pro Ziel gespeichert.</p>'}
+ <button class="dng" style="width:100%;margin-top:14px" id="del">Runde löschen</button>`;
+ document.getElementById('bk').onclick=()=>{S.v='hist';draw()};
+ document.getElementById('del').onclick=askDelete;
+}
+function askDelete(){
+ const o=document.createElement('div');o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
+ o.innerHTML=`<div class="dlg"><h2>Runde löschen?</h2><p class="mute" style="font-size:16px">Möchtest du diese Runde wirklich löschen? Sie wird endgültig entfernt und fließt nicht mehr in die Statistik ein.</p><div class="row" style="margin-top:16px"><button id="dl-no">Behalten</button><button class="dng" id="dl-yes">Löschen</button></div></div>`;
+ document.body.appendChild(o);
+ document.getElementById('dl-no').focus();
+ document.getElementById('dl-no').onclick=()=>o.remove();
+ o.onclick=e=>{if(e.target===o)o.remove()};
+ document.getElementById('dl-yes').onclick=()=>{o.remove();S.hist.splice(S.di,1);save('pz_hist',S.hist);S.v='hist';draw()};
+}
+const BWLIST='https://bogensportinfo.com/en/3d-archery-parcour/baden-w%C3%BCrttemberg';
+const PARC=[
+{n:'SV Wippingen (Jagdbogen-Parcours)',o:'89134 Blaustein-Wippingen',a:'Heustiege 36, 89134 Blaustein',lat:48.42,lng:9.90,u:'https://bogensportinfo.com/en/3d-archery-course/jagdbogen-parcours-sv-wippingen'},
+{n:'Bogenparcours Lellwangen (Standort Magetsweiler)',o:'88693 Deggenhausertal',i:'26 Stationen',a:'Magetsweiler 1, 88693 Deggenhausertal',lat:47.78,lng:9.35,u:'https://bogensportinfo.com/en/3d-archery-course/bogenparcours-lellwangen-am-standort-magetsweiler'},
+{n:'Wiesen- und Waldparcours Fürstliches Golf-Resort',o:'88339 Bad Waldsee',a:'Hopfenweiler 9, 88339 Bad Waldsee',lat:47.933289,lng:9.771703,u:'https://bogensportinfo.com/en/3d-archery-course/wiesen-und-waldparcours-furstliches-golf-resort-bad-waldsee'},
+{n:'Bogensport Parcours Grünkraut/Gullen',o:'88287 Grünkraut',a:'Schliererstr. 55, 88287 Grünkraut',lat:47.79,lng:9.68,u:'https://bogensportinfo.com/en/3d-archery-course/bogensport-parcour-grunkraut-gullen'},
+{n:'3D-Parcours Ravensburg',o:'88212 Ravensburg',lat:47.7819,lng:9.6107},
+{n:'Hegau Archers',o:'78253 Eigeltingen',i:'ca. 60 Stationen',a:'Hinterdorfstraße 44, 78253 Eigeltingen',lat:47.8667,lng:8.9333,u:'https://bogensportinfo.com/en/3d-archery-course/hegau-archers'},
+{n:'3D-Parcours Moos-Weiler',o:'78345 Moos',i:'28 Stationen',lat:47.7333,lng:8.9833},
+{n:'3D-Parcours Rielasingen-Worblingen',o:'78239 Rielasingen-Worblingen',lat:47.735,lng:8.868},
+{n:'3D Bogenparcours Jeisshütte (Archer’s Best)',o:'78176 Blumberg-Riedböhringen',i:'44 Stationen',lat:47.85545,lng:8.52,u:'https://bogensportinfo.com/en/3d-archery-course/3d-bogenparcours-jeisshutte-von-archer%C2%B4s-best'},
+{n:'Bogenparcours Schanze-Badland',o:'78086 Brigachtal',a:'Waldstraße 14, 78086 Brigachtal',lat:48.0333,lng:8.4667,u:'https://bogensportinfo.com/en/3d-archery-course/bogenparcours-schanze-badland'},
+{n:'3D-Parcours Donaueschingen',o:'78166 Donaueschingen',i:'65 Stationen',lat:47.9528,lng:8.502},
+{n:'Baden-Bowmen e.V.',o:'77836 Rheinmünster',i:'ca. 30 Stationen',lat:48.78,lng:8.12,u:'https://bogensportinfo.com/en/3d-archery-course/baden-bowmen-e-v'},
+{n:'3D-Parcours Gaggenau',o:'76571 Gaggenau',lat:48.8006,lng:8.3205},
+{n:'3D-Parcours Karlsruhe',o:'76139 Karlsruhe',lat:49.0069,lng:8.4037},
+{n:'3D-Parcours Wüstenrot-Maienfels',o:'71543 Wüstenrot',lat:49.08,lng:9.42},
+{n:'3D Parcours Allemühl e.V.',o:'69436 Schönbrunn',a:'Hauptstraße 31, 69436 Schönbrunn',lat:49.41,lng:8.9,u:'https://bogensportinfo.com/en/3d-archery-course/3d-parcours-allemuhl-e-v'},
+{n:'3D-Parcours Rettenberg',o:'87549 Rettenberg',lat:47.5333,lng:10.2833}
+];
+function km(a,b,c,d){const r=x=>x*Math.PI/180,h=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;return 12742*Math.asin(Math.sqrt(h))}
+const CITIES=[['Biberach an der Riß',48.0954,9.7878],['Ulm',48.3984,9.9916],['Neu-Ulm',48.3927,10.0114],['Laupheim',48.2269,9.8789],['Ehingen',48.2826,9.7237],['Riedlingen',48.1597,9.4742],['Bad Saulgau',48.0167,9.4975],['Bad Waldsee',47.9167,9.75],['Bad Buchau',48.0617,9.6119],['Ravensburg',47.7819,9.6107],['Friedrichshafen',47.654,9.4796],['Wangen im Allgäu',47.6867,9.8333],['Leutkirch im Allgäu',47.8247,10.0194],['Memmingen',47.983,10.185],['Kempten',47.7267,10.3139],['Lindau',47.5461,9.6842],['Konstanz',47.6779,9.1732],['Singen',47.7594,8.8419],['Sigmaringen',48.0881,9.2158],['Tuttlingen',47.985,8.819],['Rottweil',48.1667,8.627],['Villingen-Schwenningen',48.0622,8.4934],['Donaueschingen',47.9528,8.502],['Freiburg im Breisgau',47.999,7.8421],['Offenburg',48.4733,7.9444],['Lörrach',47.6144,7.6616],['Stuttgart',48.7758,9.1829],['Esslingen',48.7406,9.3051],['Ludwigsburg',48.8975,9.192],['Göppingen',48.7033,9.6517],['Schwäbisch Gmünd',48.7994,9.798],['Aalen',48.8372,10.0933],['Heidenheim',48.6761,10.1547],['Reutlingen',48.4914,9.2043],['Tübingen',48.5216,9.0576],['Balingen',48.2736,8.8548],['Heilbronn',49.1427,9.2109],['Pforzheim',48.8922,8.6946],['Karlsruhe',49.0069,8.4037],['Baden-Baden',48.7606,8.2398],['Rastatt',48.8587,8.2065],['Heidelberg',49.3988,8.6724],['Mannheim',49.4875,8.466],['Günzburg',48.4519,10.2778],['Augsburg',48.3705,10.8978],['München',48.1351,11.582],['Ingolstadt',48.7665,11.4258],['Rosenheim',47.8561,12.1289],['Landshut',48.5372,12.1521],['Passau',48.5667,13.4319],['Regensburg',49.0134,12.1016],['Nürnberg',49.4521,11.0767],['Würzburg',49.7913,9.9534],['Bamberg',49.8988,10.9028],['Bayreuth',49.9427,11.5761],['Frankfurt am Main',50.1109,8.6821],['Wiesbaden',50.0826,8.24],['Mainz',49.9929,8.2473],['Darmstadt',49.8728,8.6512],['Fulda',50.5558,9.6808],['Gießen',50.5841,8.6784],['Marburg',50.8019,8.7667],['Kassel',51.3127,9.4797],['Koblenz',50.3569,7.589],['Trier',49.7596,6.6441],['Saarbrücken',49.2402,6.9969],['Köln',50.9375,6.9603],['Bonn',50.7374,7.0982],['Düsseldorf',51.2277,6.7735],['Essen',51.4556,7.0116],['Dortmund',51.5136,7.4653],['Aachen',50.7753,6.0839],['Münster',51.9607,7.6261],['Bielefeld',52.0302,8.5325],['Osnabrück',52.2799,8.0472],['Oldenburg',53.1435,8.2146],['Bremen',53.0793,8.8017],['Hamburg',53.5511,9.9937],['Kiel',54.3233,10.1228],['Lübeck',53.8655,10.6866],['Rostock',54.0924,12.0991],['Schwerin',53.6355,11.4012],['Hannover',52.3759,9.732],['Braunschweig',52.2689,10.5268],['Göttingen',51.5413,9.9158],['Magdeburg',52.1205,11.6276],['Halle (Saale)',51.4828,11.9697],['Leipzig',51.3397,12.3731],['Dresden',51.0504,13.7373],['Chemnitz',50.8278,12.9214],['Erfurt',50.9848,11.0299],['Jena',50.9271,11.5892],['Berlin',52.52,13.405],['Potsdam',52.3906,13.0645],['Zürich',47.3769,8.5417],['Basel',47.5596,7.5886],['Bern',46.948,7.4474],['St. Gallen',47.4245,9.3767],['Bregenz',47.5031,9.7471],['Innsbruck',47.2692,11.4041],['Salzburg',47.8095,13.055],['Wien',48.2082,16.3738]];
+const norm=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ß/g,'ss').replace(/ae/g,'a').replace(/oe/g,'o').replace(/ue/g,'u').trim();
+function setPos(lat,lng,label){S.pos={lat,lng,label};S.msg='';S.q='';draw()}
+function showSug(){
+ const box=document.getElementById('sug');if(!box)return;
+ const q=norm(S.q||'');if(q.length<2){box.innerHTML='';return}
+ const m=CITIES.filter(c=>norm(c[0]).startsWith(q)).concat(CITIES.filter(c=>!norm(c[0]).startsWith(q)&&norm(c[0]).includes(q))).slice(0,6);
+ box.innerHTML=m.map((c,i)=>`<button class="pl" data-c="${CITIES.indexOf(c)}"><span class="nm">${esc(c[0])}</span></button>`).join('')+(m.length?'':'<p class="mute">Kein Treffer in der Liste.</p>')+`<button class="pl" id="ai" style="margin-top:6px"><span>Ort „${esc(S.q.trim())}“ mit Claude suchen<br><span class="mute">Position wird geschätzt</span></span></button>`;
+ box.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const c=CITIES[+b.dataset.c];setPos(c[1],c[2],c[0])});
+ const ai=document.getElementById('ai');
+ if(window.claude&&window.claude.use)ai.onclick=()=>geocodeAI(S.q.trim());
+ else{ai.innerHTML='<span>Ort „'+esc(S.q.trim())+'“ online suchen<br><span class="mute">OpenStreetMap</span></span>';ai.onclick=()=>geocodeOSM(S.q.trim())}
+}
+async function geocodeOSM(q){
+ const box=document.getElementById('sug');box.innerHTML='<p class="mute">Suche …</p>';
+ try{
+  const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=de,at,ch&accept-language=de&q='+encodeURIComponent(q));
+  if(!r.ok)throw new Error('http');
+  const j=await r.json();
+  box.innerHTML=j.length?j.map((x,i)=>`<button class="pl" data-o="${i}"><span class="nm">${esc(x.display_name.split(',').slice(0,3).join(','))}</span></button>`).join(''):'<p class="mute">Nichts gefunden. Prüfe die Schreibweise.</p>';
+  box.querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>{const x=j[+b.dataset.o];setPos(+x.lat,+x.lon,x.display_name.split(',')[0])});
+ }catch(e){box.innerHTML='<p class="mute">Die Online-Suche ist gerade nicht erreichbar. Wähle einen Ort aus der Liste.</p>'}
+}
+async function geocodeAI(q){
+ try{
+  const sample=await (window.claude&&window.claude.use?window.claude.use('sample'):null);
+  if(!sample){S.msg='Die Ortssuche mit Claude ist hier nicht verfügbar. Wähle einen Ort aus der Liste.';draw();return}
+  S.msg='Ort wird gesucht …';draw();
+  const r=await sample.json('Gib die ungefähren Koordinaten (Ortsmitte) des Ortes "'+q.replace(/"/g,'')+'" in Deutschland, Österreich oder der Schweiz an. Antworte nur mit JSON im Format {"name":"Ortsname","lat":Zahl,"lng":Zahl}. Wenn du den Ort nicht sicher kennst, antworte {"name":null}.');
+  if(r&&r.name&&isFinite(r.lat)&&isFinite(r.lng)&&r.lat>44&&r.lat<56&&r.lng>4&&r.lng<18){setPos(+r.lat,+r.lng,String(r.name).slice(0,60)+' (ungefähr)')}
+  else{S.msg='Den Ort konnte ich nicht sicher finden. Prüfe die Schreibweise oder wähle einen größeren Ort in der Nähe.';draw()}
+ }catch(e){S.msg='Die Ortssuche ist gerade nicht möglich. Wähle einen Ort aus der Liste.';draw()}
+}
+function findGeo(){
+ if(!navigator.geolocation){S.msg='Dieses Gerät oder diese Ansicht stellt keinen Standort bereit. Wähle unten einen Ort.';draw();return}
+ S.msg='Standort wird ermittelt …';draw();
+ navigator.geolocation.getCurrentPosition(p=>{S.pos={lat:p.coords.latitude,lng:p.coords.longitude,label:'Mein Standort'};S.msg='';draw()},
+ e=>{S.msg=e.code===1?'Der Standortzugriff wurde nicht erlaubt. Erlaube ihn in den iPhone-Einstellungen (Datenschutz & Sicherheit, Ortungsdienste, Safari-Websites) oder wähle unten einen Ort.':'Der Standort konnte nicht ermittelt werden. Wähle unten einen Ort.';draw()},
+ {enableHighAccuracy:false,timeout:12000,maximumAge:300000});
+}
+function finderView(){
+ const pos=S.pos,list=pos?PARC.map(p=>({...p,d:km(pos.lat,pos.lng,p.lat,p.lng)})).sort((a,b)=>a.d-b.d):[];
+ $.innerHTML=`<button id="hm">Zurück</button><h1>Parcours-Finder</h1><p class="mute">Finde 3D-Parcours in deiner Nähe, sortiert nach Entfernung.</p>
+ <button class="pri" style="width:100%" id="geo">Meinen Standort verwenden</button>
+ ${S.msg?`<p class="mute" style="font-size:15px">${esc(S.msg)}</p>`:''}
+ <label for="q">Oder Ort suchen</label>
+ <input id="q" type="search" placeholder="Stadt oder Ort eingeben" autocomplete="off" value="${esc(S.q||'')}">
+ <div id="sug"></div>
+ ${pos?`<div class="card"><b>Standort: ${esc(pos.label)}</b><p class="mute" style="margin:4px 0 8px">Alle Parcours in der Umgebung findest du live auf der Karte:</p>
+ <a class="lk" target="_blank" rel="noopener" href="https://www.google.com/maps/search/3D+Bogenparcours/@${pos.lat.toFixed(5)},${pos.lng.toFixed(5)},10z">Auf Google Maps suchen</a></div>
+ <h2>Parcours in der App</h2><p class="mute">Entfernung als Luftlinie, Standorte ungefähr (Ortsmitte). Auswahl für Baden-Württemberg und Umgebung.</p>
+ ${list.map(p=>`<div class="card"><div class="top"><b>${esc(p.n)}</b><span style="font:700 20px Georgia,serif;white-space:nowrap;margin-left:8px">${Math.round(p.d)} km</span></div>
+ <div class="mute">${esc(p.o)}${p.i?' · '+esc(p.i):''}</div>
+ <div style="margin-top:8px"><a class="lk" target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.a||(p.n+', '+p.o))}">Route</a> ${p.u?`<a class="lk" target="_blank" rel="noopener" href="${p.u}">Details</a>`:`<a class="lk" target="_blank" rel="noopener" href="https://www.google.com/search?q=${encodeURIComponent('3D Bogenparcours '+p.o.replace(/^\d+\s/,''))}">Im Web suchen</a>`}</div></div>`).join('')}
+ <a class="lk" target="_blank" rel="noopener" href="${BWLIST}">Weitere Parcours auf bogensportinfo.com</a>`:''}`;
+ document.getElementById('hm').onclick=()=>{S.v='home';draw()};
+ document.getElementById('geo').onclick=findGeo;
+ document.getElementById('q').oninput=e=>{S.q=e.target.value;showSug()};
+ showSug();
+}
+let BOW={},PREF={};
+try{BOW=JSON.parse(localStorage.getItem('pz_bow')||'{}')||{}}catch(e){}
+try{PREF=JSON.parse(localStorage.getItem('pz_pref')||'{}')||{}}catch(e){}
+const BOWF=[
+['Bogen',[['name','Bezeichnung des Set-Ups','text','z. B. Mein Jagdbogen'],['art','Bogenart','sel',['','Recurve','Compound','Blankbogen','Langbogen','Traditioneller Recurve','Primitivbogen','Sonstiges']],['modell','Hersteller und Modell','text',''],['zug','Zuggewicht (lbs)','number',''],['auszug','Auszugslänge (Zoll)','number',''],['laenge','Bogenlänge (Zoll)','number',''],['stand','Standhöhe (Zoll)','number',''],['tiller','Tiller','text','']]],
+['Visier, Sehne und Zubehör',[['visier','Visier (Typ, Einstellungen)','text',''],['stab','Stabilisator','text',''],['sehne','Sehne (Material, Fadenzahl)','text',''],['nock','Nockpunkt','text',''],['ablass','Ablasshilfe oder Fingerschutz','text','']]],
+['Pfeile',[['pfeil','Hersteller und Modell','text',''],['schaft','Schaftlänge (Zoll)','number',''],['spine','Spine','text',''],['pgewicht','Gesamtgewicht (grain)','number',''],['spitze','Spitzengewicht (grain)','number',''],['fed','Befiederung','text',''],['nocke','Nocken','text',''],['anzahl','Anzahl Pfeile','number','']]],
+['Notizen',[['notiz','Notizen','area','']]]
+];
+function fieldHtml(k,l,t,x){
+ const v=esc(BOW[k]||''),id='bf_'+k;
+ if(t==='sel')return `<label for="${id}">${l}</label><select id="${id}">${x.map(o=>`<option value="${esc(o)}" ${o===(BOW[k]||'')?'selected':''}>${o||'Bitte wählen'}</option>`).join('')}</select>`;
+ if(t==='area')return `<label for="${id}">${l}</label><textarea id="${id}" rows="4" maxlength="600">${v}</textarea>`;
+ return `<label for="${id}">${l}</label><input id="${id}" value="${v}" placeholder="${esc(x)}" ${t==='number'?'inputmode="decimal"':''} maxlength="80">`;
+}
+function bowView(){
+ $.innerHTML=`<button id="hm">Zurück</button><h1>Bogen Set-Up</h1><p class="mute">Deine Ausrüstung im Überblick. Änderungen werden automatisch auf diesem Gerät gespeichert. <span id="st"></span></p>`+
+ BOWF.map(([g,fs])=>`<div class="card"><b>${g}</b>${fs.map(([k,l,t,x])=>fieldHtml(k,l,t,x)).join('')}</div>`).join('');
+ document.getElementById('hm').onclick=()=>{S.v='home';draw()};
+ BOWF.forEach(([g,fs])=>fs.forEach(([k])=>{const e=document.getElementById('bf_'+k);const h=()=>{BOW[k]=e.value;save('pz_bow',BOW);document.getElementById('st').textContent='Gespeichert ✓'};e.oninput=h;e.onchange=h}));
+}
+function applyPref(){if(PREF.rid&&RULES[PREF.rid]){S.rid=PREF.rid;S.cls=RULES[PREF.rid].cls.includes(PREF.cls)?PREF.cls:''}}
+function prefsView(){
+ const rid=PREF.rid&&RULES[PREF.rid]?PREF.rid:'',r=rid?RULES[rid]:null;
+ $.innerHTML=`<button id="hm">Zurück</button><h1>Einstellungen</h1><p class="mute">Diese Vorauswahl gilt, wenn du eine neue Runde startest. Du kannst sie dort jederzeit ändern. <span id="st"></span></p>
+ <div class="card"><label for="prid">Standard-Regelwerk</label><select id="prid"><option value="">Zuletzt verwendetes</option>${Object.entries(RULES).map(([k,v])=>`<option value="${k}" ${k===rid?'selected':''}>${v.name}</option>`).join('')}</select>
+ ${r?`<label for="pcls">Standard-Bogenklasse</label><select id="pcls"><option value="">Erste Klasse der Liste</option>${r.cls.map(c=>`<option ${c===PREF.cls?'selected':''}>${c}</option>`).join('')}</select>`:'<p class="mute" style="margin:8px 0 0">Wähle ein Regelwerk, um auch eine Standard-Bogenklasse festzulegen.</p>'}</div>`;
+ const ok=()=>{document.getElementById('st').textContent='Gespeichert ✓'};
+ document.getElementById('hm').onclick=()=>{S.v='home';draw()};
+ document.getElementById('prid').onchange=e=>{PREF.rid=e.target.value;PREF.cls='';save('pz_pref',PREF);prefsView();ok()};
+ const pc=document.getElementById('pcls');if(pc)pc.onchange=e=>{PREF.cls=e.target.value;save('pz_pref',PREF);ok()};
+}
+function askAbort(){
+ const o=document.createElement('div');o.className='ov';o.setAttribute('role','dialog');o.setAttribute('aria-modal','true');
+ o.innerHTML=`<div class="dlg"><h2>Runde abbrechen?</h2><p class="mute" style="font-size:16px">Möchtest du die Runde wirklich abbrechen? Sie wird nicht gespeichert, alle Eingaben gehen verloren.</p><div class="row" style="margin-top:16px"><button id="ab-no">Weiter schießen</button><button class="dng" id="ab-yes">Runde abbrechen</button></div></div>`;
+ document.body.appendChild(o);
+ document.getElementById('ab-no').focus();
+ document.getElementById('ab-no').onclick=()=>o.remove();
+ o.onclick=e=>{if(e.target===o)o.remove()};
+ document.getElementById('ab-yes').onclick=()=>{o.remove();S.v='home';draw()};
+}
+function draw(){window.scrollTo(0,0);({home,setup,shoot:shootView,sum:sumView,hist:histView,detail:detailView,finder:finderView,bow:bowView,prefs:prefsView})[S.v]()}
+draw();
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{})})}
+</script>
+</body>
+</html>
